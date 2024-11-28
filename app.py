@@ -11,7 +11,7 @@ from langchain.prompts import PromptTemplate
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+
 
 # Define correct passkey
 correct_passkey = "sainath123"  # Replace with your actual passkey
@@ -38,13 +38,16 @@ def authenticate_user():
         st.title("Chat with PDF using Gemini💁")
 
 # Check if the Google API key is set
-api_key = os.getenv("GOOGLE_API_KEY")
+google_api_key = st.secrets["GOOGLE_API_KEY"]
 
-if not api_key:
+
+if not google_api_key:
     st.error("Google API key is not set. Please check your .env file.")
     st.stop()
+else:
+    st.write(f"Google API Key Loaded:{google_api_key}")
 
-genai.configure(api_key=api_key)
+genai.configure(api_key=google_api_key)
 
 def get_pdf_text(pdf_docs):
     text = ""
