@@ -8,30 +8,24 @@ from langchain.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
+from dotenv import load_dotenv
 
-# Define correct passkey
-correct_passkey = "sainath123"  # Replace with your actual passkey
 
-# Function to authenticate the user using passkey
-def authenticate_user():
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
+st.set_page_config(page_title="Chat PDF", layout="wide")
 
-    if not st.session_state.authenticated:
-        st.title("Welcome to Chat PDF with Gemini💁")
 
-        passkey = st.text_input("🚀 Enter the passkey to proceed:", type="password")
-        
-        if st.button("Authenticate"):
-            if passkey == correct_passkey:
-                st.session_state.authenticated = True
-                st.success("Authentication successful! Welcome aboard! 🎉")
-                
-            else:
-                st.error("Authentication failed. Please enter a valid passkey. 🛑")
-    return st.session_state.authenticated
+load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY")
 
-# Function to get text from PDF files
+
+if not google_api_key:
+    st.error("Google API key is missing! Please set it in the environment variables.")
+    st.stop() 
+
+
+genai.configure(api_key=google_api_key)
+
+
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -40,15 +34,18 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks
 
+
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
+
 
 def get_conversational_chain():
     prompt_template = (
@@ -60,26 +57,25 @@ def get_conversational_chain():
         "- Well-structured\n"
         "- Very detailed\n"
         "- Comprehensive for the topic\n"
-        "- contain short and easy code snippets if needed in context to the topic of the document"
+        "- Contain short and easy code snippets if needed in context to the topic of the document\n"
         "- Include relevant examples\n"
         "- Easy to understand for everyone\n"
         "- Free of any repetitive content and unnecessary length\n"
         "- Appropriate for an undergrad engineering AI and Data Science student\n"
-        "Begin the answer by writing the question and then the answer"
-        "Provide a clear, concise and comprehensive answer based on the PDF context"
+        "Begin the answer by writing the question and then the answer\n"
+        "Provide a clear, concise, and comprehensive answer based on the PDF context"
     )
 
-    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
-
+    model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.3,google_api_key = google_api_key)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
     return chain
 
+
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    new_db = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
@@ -91,28 +87,30 @@ def user_input(user_question):
 
     st.write("Reply: ", response["output_text"])
 
+
 def main():
-    if authenticate_user():
-        st.set_page_config("Chat PDF")
-        st.header("Chat with PDF using Gemini💁")
+    st.header("Chat with PDF using Gemini💁")
 
-        user_question = st.text_input("Ask a Question from the PDF Files")
+    # Input for user question
+    user_question = st.text_input("Ask a Question from the PDF Files")
 
-        if user_question:
-            user_input(user_question)
+    if user_question:
+        user_input(user_question)
 
-        with st.sidebar:
-            st.title("Menu:")
-            pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-            if st.button("Submit & Process"):
-                if pdf_docs:
-                    with st.spinner("Processing..."):
-                        raw_text = get_pdf_text(pdf_docs)
-                        text_chunks = get_text_chunks(raw_text)
-                        get_vector_store(text_chunks)
-                        st.success("Done")
-                else:
-                    st.error("Please upload some PDF files.")
+    with st.sidebar:
+        st.title("Menu:")
+        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
+
+        if st.button("Submit & Process"):
+            if not pdf_docs:
+                st.error("Please upload a PDF file.")
+            else:
+                with st.spinner("Processing..."):
+                    raw_text = get_pdf_text(pdf_docs)
+                    text_chunks = get_text_chunks(raw_text)
+                    get_vector_store(text_chunks)
+                    st.success("PDF Processed and Vector Store Created!")
+
 
 if __name__ == "__main__":
     main()
