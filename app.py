@@ -26,7 +26,7 @@ def authenticate_user():
             if passkey == correct_passkey:
                 st.session_state.authenticated = True
                 st.success("Authentication successful! Welcome aboard! 🎉")
-                st.experimental_rerun()  # Refresh the app to show the main content
+                
             else:
                 st.error("Authentication failed. Please enter a valid passkey. 🛑")
     return st.session_state.authenticated
