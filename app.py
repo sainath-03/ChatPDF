@@ -8,10 +8,6 @@ from langchain.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
-from dotenv import load_dotenv
-
-# Load environment variables from .env file
-
 
 # Define correct passkey
 correct_passkey = "sainath123"  # Replace with your actual passkey
@@ -37,14 +33,8 @@ def authenticate_user():
     else:
         st.title("Chat with PDF using Gemini💁")
 
-# Check if the Google API key is set
-load_dotenv()
-os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# Function to validate the Google API key
 
-
-
-    
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -106,9 +96,26 @@ def user_input(user_question):
     st.write("Reply: ", response["output_text"])
 
 def main():
-    authenticate_user()
+    if 'authenticated' not in st.session_state:
+        st.session_state.authenticated = False
 
-    if st.session_state.authenticated:
+    if not st.session_state.authenticated:
+        st.title("Welcome to Chat PDF with Gemini💁")
+
+        passkey = st.text_input("🚀 Enter the passkey to proceed:", type="password")
+        
+        if st.button("Authenticate"):
+            if passkey == correct_passkey:
+                st.session_state.authenticated = True
+                st.success("Authentication successful! Welcome aboard! 🎉")
+                st.rerun()  # Refresh the app to show the main content
+            else:
+                st.error("Authentication failed. Please enter a valid passkey. 🛑")
+
+    else:
+        st.set_page_config("Chat PDF")
+        st.header("Chat with PDF using Gemini💁")
+
         user_question = st.text_input("Ask a Question from the PDF Files")
 
         if user_question:
@@ -123,6 +130,13 @@ def main():
                     text_chunks = get_text_chunks(raw_text)
                     get_vector_store(text_chunks)
                     st.success("Done")
+        
 
+
+           
+                
+        
+           
+        
 if __name__ == "__main__":
     main()
