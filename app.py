@@ -26,16 +26,12 @@ def authenticate_user():
             if passkey == correct_passkey:
                 st.session_state.authenticated = True
                 st.success("Authentication successful! Welcome aboard! 🎉")
-                st.rerun()  # Refresh the app to show the main content
+                st.experimental_rerun()  # Refresh the app to show the main content
             else:
                 st.error("Authentication failed. Please enter a valid passkey. 🛑")
+    return st.session_state.authenticated
 
-    else:
-        st.title("Chat with PDF using Gemini💁")
-
-# Function to validate the Google API key
-
-
+# Function to get text from PDF files
 def get_pdf_text(pdf_docs):
     text = ""
     for pdf in pdf_docs:
@@ -96,23 +92,7 @@ def user_input(user_question):
     st.write("Reply: ", response["output_text"])
 
 def main():
-    if 'authenticated' not in st.session_state:
-        st.session_state.authenticated = False
-
-    if not st.session_state.authenticated:
-        st.title("Welcome to Chat PDF with Gemini💁")
-
-        passkey = st.text_input("🚀 Enter the passkey to proceed:", type="password")
-        
-        if st.button("Authenticate"):
-            if passkey == correct_passkey:
-                st.session_state.authenticated = True
-                st.success("Authentication successful! Welcome aboard! 🎉")
-                st.rerun()  # Refresh the app to show the main content
-            else:
-                st.error("Authentication failed. Please enter a valid passkey. 🛑")
-
-    else:
+    if authenticate_user():
         st.set_page_config("Chat PDF")
         st.header("Chat with PDF using Gemini💁")
 
@@ -125,18 +105,14 @@ def main():
             st.title("Menu:")
             pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
             if st.button("Submit & Process"):
-                with st.spinner("Processing..."):
-                    raw_text = get_pdf_text(pdf_docs)
-                    text_chunks = get_text_chunks(raw_text)
-                    get_vector_store(text_chunks)
-                    st.success("Done")
-        
+                if pdf_docs:
+                    with st.spinner("Processing..."):
+                        raw_text = get_pdf_text(pdf_docs)
+                        text_chunks = get_text_chunks(raw_text)
+                        get_vector_store(text_chunks)
+                        st.success("Done")
+                else:
+                    st.error("Please upload some PDF files.")
 
-
-           
-                
-        
-           
-        
 if __name__ == "__main__":
     main()
