@@ -1,30 +1,30 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
+from dotenv import load_dotenv
+
 
 st.set_page_config(page_title="Chat PDF", layout="wide")
 
-# Sidebar for API key input
-with st.sidebar:
-    st.title("API Configuration")
-    google_api_key = st.text_input(
-        "Enter your Google API Key",
-        type="password",
-        help="You can get an API key from https://console.cloud.google.com/apis/credentials",
-    )
+
+load_dotenv()
+google_api_key = os.getenv("GOOGLE_API_KEY")
+
 
 if not google_api_key:
-    st.warning("Please enter your Google API key in the sidebar.")
-    st.stop()
+    st.error("Google API key is missing! Please set it in the environment variables.")
+    st.stop() 
 
-# Configure the API key
+
 genai.configure(api_key=google_api_key)
+
 
 def get_pdf_text(pdf_docs):
     text = ""
@@ -34,15 +34,18 @@ def get_pdf_text(pdf_docs):
             text += page.extract_text()
     return text
 
+
 def get_text_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     chunks = text_splitter.split_text(text)
     return chunks
 
+
 def get_vector_store(text_chunks):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local("faiss_index")
+
 
 def get_conversational_chain():
     prompt_template = (
@@ -63,15 +66,16 @@ def get_conversational_chain():
         "Provide a clear, concise, and comprehensive answer based on the PDF context"
     )
 
-    model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.3, google_api_key=google_api_key)
+    model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.3,google_api_key = google_api_key)
     prompt = PromptTemplate(template=prompt_template, input_variables=["context", "question"])
     chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
 
     return chain
 
+
 def user_input(user_question):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-    new_db = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+    new_db = FAISS.load_local("faiss_index", embeddings,allow_dangerous_deserialization=True)
     docs = new_db.similarity_search(user_question)
 
     chain = get_conversational_chain()
@@ -82,6 +86,7 @@ def user_input(user_question):
     )
 
     st.write("Reply: ", response["output_text"])
+
 
 def main():
     st.header("Chat with PDF using Gemini💁")
@@ -105,6 +110,7 @@ def main():
                     text_chunks = get_text_chunks(raw_text)
                     get_vector_store(text_chunks)
                     st.success("PDF Processed and Vector Store Created!")
+
 
 if __name__ == "__main__":
     main()
